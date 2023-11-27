@@ -3,6 +3,8 @@
 
 Welcome to the Market Hub Fast API project. This project is in its early stages and currently includes foundational components for a FastAPI-based application. It is entirely developed using Python.
 
+![Market Hub FastAPI](market-hub.png)
+
 ## Project Overview
 
 Market Hub Fast API is an API project designed using FastAPI, a modern, fast web framework for building APIs with Python. The project's structure and its initial components suggest a focus on setting up a basic API framework, which can be expanded for various purposes.
