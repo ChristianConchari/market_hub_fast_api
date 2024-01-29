@@ -1,26 +1,18 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List
+from config.database import Base
+from sqlalchemy import Column, Integer, String, Float, List
 
-class Product(BaseModel):
-    id: Optional[int] = Field(default=None, ge=1, le=2000)
-    name: str = Field(..., min_length=5, max_length=50)
-    description: str = Field(..., min_length=5, max_length=100)
-    price: float = Field(..., gt=0, le=100000)
-    category: str = Field(..., min_length=5, max_length=50)
-    rating: float = Field(..., gt=0, le=5)
-    availableSizes: Optional[List[str]] = None
-    colorOptions: Optional[List[str]] = None
+class Product(Base):
+    """
+    Represents a product in the market hub.
+    """
 
-    model_config = {
-        "json_schema_extra": {
-            "example": {
-                "name": "Ultra Comfort Running Shoes",
-                "description": "Lightweight and breathable running shoes with enhanced cushioning.",
-                "price": 79.99,
-                "category": "Footwear",
-                "rating": 4.5,
-                "availableSizes": ["7", "8", "9", "10", "11"],
-                "colorOptions": ["Blue", "Black", "White"]
-            }
-        }
-    }    
+    __tablename__ = "products"    
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(50), nullable=False)
+    description = Column(String(100), nullable=False)
+    price = Column(Float, nullable=False)
+    category = Column(String(50), nullable=False)
+    rating = Column(Float, nullable=False)
+    availableSizes = Column(List[String], nullable=True)
+    colorOptions = Column(List[String], nullable=True)

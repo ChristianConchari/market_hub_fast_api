@@ -1,19 +1,15 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List
+from config.database import Base
+from sqlalchemy import Column, Integer, String, Enum
 
-class User(BaseModel):
-    userName: str = Field(min_length=5, max_length=15)
-    email: str = Field(min_length=5, max_length=15, type="email")
-    password: str = Field(min_length=8, max_length=50, type="password")
-    role: str = Field(..., pattern="^(admin|customer)$")
-    
-    model_config = {
-        "json_schema_extra": {
-            "example": {
-                "userName": "customer",
-                "email": "user@mail.com",
-                "password": "Hola1234",
-                "role": "admin"
-            }
-        }
-    }
+class User(Base):
+    """
+    Represents a user in the system.
+    """
+
+    __tablename__ = "users"    
+
+    id = Column(Integer, primary_key=True)
+    userName = Column(String(15), nullable=False)
+    email = Column(String(50), nullable=False)
+    password = Column(String(50), nullable=False)
+    role = Column(Enum('admin', 'customer'), nullable=False)
