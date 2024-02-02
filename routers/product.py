@@ -6,13 +6,13 @@ from typing import List
 from fastapi import Path, Query, Depends
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
+from config.database import Session
 
 from schemas.product import Product
 from middlewares.jwt_bearer import JWTBearer
 
-from data.products_data import products
-
-from utils.utils import find_product_by_id
+from services.product import ProductService
 
 product_router = APIRouter()
 
@@ -24,6 +24,8 @@ def get_products() -> List[Product]:
     Returns:
         List[Product]: The list of products.
     """
+    db = Session()
+    products = ProductService(db).get_products()
     return JSONResponse(content=products, status_code=200)
 
 @product_router.get("/products/{product_id}", tags=['products'], response_model=Product, status_code=200)
@@ -41,10 +43,12 @@ def get_product(product_id: int = Path(ge=1, le=2000)) -> Product:
         HTTPException: If the product is not found.
 
     """
-    for item in products:
-        if item['id'] == product_id:
-            return JSONResponse(content=item, status_code=200)
-    return JSONResponse(content={"message": "Product not found"}, status_code=404)
+    db = Session()
+    product = ProductService(db).get_product(product_id)
+
+    if not product:
+        return JSONResponse(content={"message": "Product not found"}, status_code=404)
+    return JSONResponse(content=jsonable_encoder(product), status_code=200)
 
 @product_router.get("/products/", tags=['products'], response_model=List[Product], status_code=200)
 def get_products_by_category(category: str = Query(min_length=5, max_length=15)) -> List[Product]:
@@ -60,14 +64,19 @@ def get_products_by_category(category: str = Query(min_length=5, max_length=15))
     Raises:
         JSONResponse: If no products are found, returns a JSON response with a 404 status code.
     """
-    result = [item for item in products if item['category'] == category]
+    db = Session()
+    product = ProductService(db).get_products_by_category(category)
 
-    if len(result) == 0:
+    if not product:
         return JSONResponse(content={"message": "No products found"}, status_code=404)
-    else:
-        return JSONResponse(content=result, status_code=200)       
+    return JSONResponse(content=jsonable_encoder(product), status_code=200)
 
-@product_router.post("/products", tags=['products'], response_model=dict, status_code=201, dependencies=[Depends(JWTBearer())])
+@product_router.post("/products",
+                     tags=['products'],
+                     response_model=dict,
+                     status_code=201,
+                     dependencies=[Depends(JWTBearer())]
+                    )
 def create_product(product: Product) -> dict:
     """
     Creates a new product.
@@ -78,10 +87,17 @@ def create_product(product: Product) -> dict:
     Returns:
         dict: A dictionary containing the message "Product created successfully".
 
+    Raises:
+        None
+
+    Examples:
+        >>> product = Product(name="Example Product", price=10.99)
+        >>> create_product(product)
+        {'message': 'Product created successfully'}
+
     """
-    new_id = products[-1]['id'] + 1
-    product.id = new_id
-    products.append(product.dict())
+    db = Session()
+    ProductService(db).create_product(product)
     return JSONResponse(content={"message": "Product created successfully"}, status_code=201)
 
 @product_router.put("/products/{id}", tags=['products'], dependencies=[Depends(JWTBearer())])
@@ -97,21 +113,23 @@ def update_product(product_id: int, product: Product):
         JSONResponse: The response containing the updated product data 
         or an error message if the product is not found.
     """
-    product.id = product_id
-    item = find_product_by_id(product_id, products)
-    if not item:
+    db = Session()
+    product = ProductService(db).update_product(product_id, product)
+    
+    if not product:
         return JSONResponse(content={"message": "Product not found"}, status_code=404)
-
-    for field, value in product.dict().items():
-        item[field] = value
-
     return JSONResponse(content={
         "message": "Product updated successfully", 
-        "data": item
+        "data": product.dict()
     }, status_code=200)
 
 
-@product_router.delete("/products/{id}", tags=['products'], response_model=dict, status_code=200, dependencies=[Depends(JWTBearer())])
+@product_router.delete("/products/{id}",
+                       tags=['products'],
+                       response_model=dict,
+                       status_code=200,
+                       dependencies=[Depends(JWTBearer())]
+                      )
 def delete_product(product_id: int) -> dict:
     """
     Deletes a product from the list of products based on the given product ID.
@@ -125,12 +143,10 @@ def delete_product(product_id: int) -> dict:
     Raises:
         None
     """
-    deleted_product = [item for item in products if item['id'] == product_id] 
+    db = Session()
+    product = ProductService(db).get_product(product_id)
     
-    if deleted_product:
-        products.remove(deleted_product[0])
-        return JSONResponse(content={
-            "message": "Product deleted successfully", 
-        }, status_code=200)
-    
-    return JSONResponse(content={"message": "Product not found"}, status_code=404)
+    if not product:
+        return JSONResponse(content={"message": "Product not found"}, status_code=404)
+    ProductService(db).delete_product(product_id)
+    return JSONResponse(content={"message": "Product deleted successfully"}, status_code=200)

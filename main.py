@@ -1,31 +1,25 @@
-from fastapi import FastAPI, Body, Path, Query, Request, Depends
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.exceptions import HTTPException
-from typing import Optional, List
-from fastapi.security import HTTPBearer
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 
-from jwt_manager import create_token, validate_token
+from config.database import engine, Base
+from middlewares.error_handler import ErrorHandler
 
-from models.product import Product
-from models.user import User
-
-from utils.utils import find_product_by_id
-
-from data.products_data import products
-from data.users_data import users
+from routers.product import product_router
+from routers.user import user_router
 
 app = FastAPI()
 app.title = "Market Hub API"
 app.version = "0.0.1"
 
-class JWTBearer(HTTPBearer):
-    async def __call__(self, request: Request):
-        auth = await super().__call__(request)
-        data = validate_token(auth.credentials)
-        print(data)
-        if data['email'] not in [item['email'] for item in users]:
-            raise HTTPException(status_code=403, detail="Invalid credentials")
+app.add_middleware(ErrorHandler)
+app.include_router(product_router)
+app.include_router(user_router)
+
+Base.metadata.create_all(bind=engine)
 
 @app.get("/", tags=['home'])
 def message():
-    return HTMLResponse("<h1>Welcome to my API</h1>")
+    """
+    Returns a welcome message.
+    """
+    return HTMLResponse(content="<h1>Welcome to the Market Hub API</h1>", status_code=200)
